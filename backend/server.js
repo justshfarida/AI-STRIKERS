@@ -8,6 +8,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+app.get("/", (req, res) => {
+  res.send("MaliAI backend is up");
+});
+
 app.post("/api/chat", async (req, res) => {
   try {
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
