@@ -24,7 +24,7 @@
         }
 
         .gradient-bg {
-            background: linear-gradient(135deg, #667eea 0%, #6c5f79 100%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
 
         .glass {
@@ -112,8 +112,18 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
+        const ALLOWED_VIEWS = ['splash', 'login', 'register', 'dashboard'];
+
+        const getInitialView = () => {
+            const hash = window.location.hash.replace('#', '');
+            if (ALLOWED_VIEWS.includes(hash)) {
+                return hash;
+            }
+            return 'splash';
+        };
+
         const App = () => {
-            const [view, setView] = useState('splash');
+            const [view, setView] = useState(getInitialView);
             const [activeTab, setActiveTab] = useState('dashboard');
             const [user, setUser] = useState(null);
             const [receipts, setReceipts] = useState([]);
@@ -127,22 +137,54 @@
             const fileInputRef = useRef(null);
             const chatEndRef = useRef(null);
 
+            // Splash auto → login
             useEffect(() => {
                 if (view === 'splash') {
-                    setTimeout(() => setView('login'), 2000);
+                    const t = setTimeout(() => setView('login'), 2000);
+                    return () => clearTimeout(t);
                 }
             }, [view]);
 
+            // Scroll chat to bottom
             useEffect(() => {
                 chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
             }, [chatMessages]);
 
+            // Load saved API key (for UI – backend əslində istifadə etmir)
             useEffect(() => {
-                // Load saved API key on mount
                 const savedKey = localStorage.getItem('openai_api_key');
                 if (savedKey) {
                     setApiKeyInput(savedKey);
                 }
+            }, []);
+
+            // 🔁 View ↔ URL history sinxronizasiya
+            useEffect(() => {
+                if (!view) return;
+                const hash = `#${view}`;
+                // history state-i yenilə
+                if (window.location.hash !== hash) {
+                    window.history.pushState({ view }, '', hash);
+                } else {
+                    window.history.replaceState({ view }, '', hash);
+                }
+            }, [view]);
+
+            useEffect(() => {
+                const handlePopState = (event) => {
+                    const stateView = event.state?.view;
+                    if (ALLOWED_VIEWS.includes(stateView)) {
+                        setView(stateView);
+                    } else {
+                        const hashView = window.location.hash.replace('#', '');
+                        if (ALLOWED_VIEWS.includes(hashView)) {
+                            setView(hashView);
+                        }
+                    }
+                };
+
+                window.addEventListener('popstate', handlePopState);
+                return () => window.removeEventListener('popstate', handlePopState);
             }, []);
 
             const handleLogin = (e) => {
@@ -154,6 +196,14 @@
                     business: formData.get('business')
                 });
                 setView('dashboard');
+            };
+
+            // Register form – sadəcə UI, real funksionallıq yoxdur
+            const handleRegister = (e) => {
+                e.preventDefault();
+                // Burda backend qeydiyyatı və s. ola bilər
+                // İndilik sadəcə login səhifəsinə qaytarırıq
+                setView('login');
             };
 
             const handleFileUpload = (e) => {
@@ -183,6 +233,8 @@
                 reader.readAsDataURL(file);
             };
 
+            const totalExpense = receipts.reduce((acc, r) => acc + parseFloat(r.amount), 0);
+
             const sendMessage = async () => {
                 if (!chatInput.trim()) return;
 
@@ -191,11 +243,11 @@
                 setChatMessages(newMessages);
                 setChatInput('');
 
-                // Check if API key is set
+                // API key yalnız UI üçün istifadə olunur (mock/real seçimi)
                 const apiKey = localStorage.getItem('openai_api_key');
 
                 if (!apiKey) {
-                    // Fallback to mock responses
+                    // Mock cavablar (əgər API açarı qoyulmayıbsa)
                     setTimeout(() => {
                         const responses = [
                             'Sizin cari ayın xərclərinə əsasən, yeni işçi işə götürmək üçün aylıq büdcənizin 15%-ni artırmalısınız.',
@@ -211,30 +263,33 @@
                     return;
                 }
 
-                // Call OpenAI API
                 try {
                     const financialContext = `
-                        Siz Azərbaycan KOB-ları üçün AI maliyyə məsləhətçisisiniz.
-                        İstifadəçi məlumatları:
-                        - Biznes: ${user?.business}
-                        - Ümumi xərc: ${totalExpense.toFixed(2)}₼
-                        - Qəbz sayı: ${receipts.length}
-                        - Kateqoriyalar: ${receipts.map(r => r.category).join(', ')}
-                        
-                        Azərbaycan dilində cavab verin və konkret məsləhətlər verin.
-                    `;
-                    console.log('API KEY FROM LOCALSTORAGE:', apiKey);
+            Siz Azərbaycan KOB-ları üçün AI maliyyə məsləhətçisisiniz.
+            İstifadəçi məlumatları:
+            - Biznes: ${user?.business}
+            - Ümumi xərc: ${totalExpense.toFixed(2)}₼
+            - Qəbz sayı: ${receipts.length}
+            - Kateqoriyalar: ${receipts.map(r => r.category).join(', ')}
 
+            Azərbaycan dilində cavab verin və konkret məsləhətlər verin.
+          `;
 
-                    const BASE_URL =
-                        window.location.hostname === "localhost"
-                            ? "http://localhost:3000"
-                            : "https://maliai-backend.onrender.com"; // BACK URL
-
-                    const response = await fetch(`${BASE_URL}/api/chat`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ /* ... */ })
+                    // 🔗 Backend proxy çağırışı (Node.js server)
+                    const response = await fetch('http://localhost:3000/api/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            model: 'gpt-4o-mini',
+                            messages: [
+                                { role: 'system', content: financialContext },
+                                ...newMessages.map(m => ({ role: m.role, content: m.content }))
+                            ],
+                            temperature: 0.7,
+                            max_tokens: 500
+                        })
                     });
 
                     if (!response.ok) {
@@ -242,22 +297,20 @@
                     }
 
                     const data = await response.json();
-                    const aiResponse = data.choices[0].message.content;
+                    const aiResponse = data.choices?.[0]?.message?.content ?? 'Cavab alına bilmədi.';
 
                     setChatMessages(prev => [...prev, {
                         role: 'assistant',
                         content: aiResponse
                     }]);
                 } catch (error) {
-                    console.error('OpenAI API Error:', error);
+                    console.error('OpenAI API Error (backend):', error);
                     setChatMessages(prev => [...prev, {
                         role: 'assistant',
-                        content: 'Üzr istəyirik, xəta baş verdi. API açarınızı yoxlayın və ya sonra yenidən cəhd edin.'
+                        content: 'Üzr istəyirik, xəta baş verdi. Daha sonra yenidən cəhd edin.'
                     }]);
                 }
             };
-
-            const totalExpense = receipts.reduce((acc, r) => acc + parseFloat(r.amount), 0);
 
             const saveApiKey = () => {
                 if (apiKeyInput.trim()) {
@@ -282,7 +335,8 @@
                     <div className="h-screen gradient-bg flex items-center justify-center relative overflow-hidden">
                         <div className="absolute inset-0 opacity-20">
                             <div className="absolute top-20 left-10 w-32 h-32 bg-white rounded-full blur-3xl animate-pulse-slow"></div>
-                            <div className="absolute bottom-20 right-10 w-40 h-40 bg-purple-300 rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '1s' }}></div>
+                            <div className="absolute bottom-20 right-10 w-40 h-40 bg-purple-300 rounded-full blur-3xl animate-pulse-slow"
+                                style={{ animationDelay: '1s' }}></div>
                         </div>
                         <div className="text-center z-10 scale-in">
                             <div className="w-24 h-24 bg-white rounded-3xl mx-auto mb-6 flex items-center justify-center shadow-2xl floating">
@@ -344,9 +398,97 @@
                                         type="submit"
                                         className="w-full py-4 rounded-2xl bg-white text-purple-600 font-bold text-lg shadow-xl hover:shadow-2xl active:scale-95 transition-all"
                                     >
-                                        Başla
+                                        Giriş
                                     </button>
                                 </form>
+
+                                <div className="mt-4 text-center text-white/80 text-sm">
+                                    Hesabınız yoxdur?{' '}
+                                    <button
+                                        type="button"
+                                        onClick={() => setView('register')}
+                                        className="font-semibold underline"
+                                    >
+                                        Qeydiyyatdan keçin
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // REGISTER SCREEN (yalnız UI)
+            if (view === 'register') {
+                return (
+                    <div className="min-h-screen gradient-bg flex items-center justify-center p-6 relative overflow-hidden">
+                        <div className="absolute inset-0 opacity-10">
+                            <div className="absolute top-0 left-0 w-64 h-64 bg-white rounded-full blur-3xl"></div>
+                            <div className="absolute bottom-0 right-0 w-64 h-64 bg-purple-300 rounded-full blur-3xl"></div>
+                        </div>
+
+                        <div className="w-full max-w-md z-10 scale-in">
+                            <div className="text-center mb-8">
+                                <div className="w-20 h-20 bg-white rounded-3xl mx-auto mb-4 flex items-center justify-center shadow-2xl">
+                                    <span className="text-4xl">📝</span>
+                                </div>
+                                <h1 className="text-4xl font-black text-white mb-2">Qeydiyyat</h1>
+                                <p className="text-white/80 text-lg">MaliAI hesabınızı yaradın</p>
+                            </div>
+
+                            <div className="glass rounded-3xl p-8 shadow-2xl">
+                                <form onSubmit={handleRegister} className="space-y-4">
+                                    <div>
+                                        <input
+                                            name="name"
+                                            required
+                                            placeholder="Adınız və Soyadınız"
+                                            className="w-full px-5 py-4 rounded-2xl bg-white/90 border-0 focus:outline-none focus:ring-2 focus:ring-white/50 text-slate-800 font-medium placeholder:text-slate-400"
+                                        />
+                                    </div>
+                                    <div>
+                                        <input
+                                            name="email"
+                                            type="email"
+                                            required
+                                            placeholder="Email ünvanınız"
+                                            className="w-full px-5 py-4 rounded-2xl bg-white/90 border-0 focus:outline-none focus:ring-2 focus:ring-white/50 text-slate-800 font-medium placeholder:text-slate-400"
+                                        />
+                                    </div>
+                                    <div>
+                                        <input
+                                            name="business"
+                                            required
+                                            placeholder="Biznesinizin adı"
+                                            className="w-full px-5 py-4 rounded-2xl bg-white/90 border-0 focus:outline-none focus:ring-2 focus:ring-white/50 text-slate-800 font-medium placeholder:text-slate-400"
+                                        />
+                                    </div>
+                                    <div>
+                                        <input
+                                            name="password"
+                                            type="password"
+                                            placeholder="Şifrə (placeholder)"
+                                            className="w-full px-5 py-4 rounded-2xl bg-white/90 border-0 focus:outline-none focus:ring-2 focus:ring-white/50 text-slate-800 font-medium placeholder:text-slate-400"
+                                        />
+                                    </div>
+                                    <button
+                                        type="submit"
+                                        className="w-full py-4 rounded-2xl bg-white text-purple-600 font-bold text-lg shadow-xl hover:shadow-2xl active:scale-95 transition-all"
+                                    >
+                                        Qeydiyyatı tamamla
+                                    </button>
+                                </form>
+
+                                <div className="mt-4 text-center text-white/80 text-sm">
+                                    Artıq hesabınız var?{' '}
+                                    <button
+                                        type="button"
+                                        onClick={() => setView('login')}
+                                        className="font-semibold underline"
+                                    >
+                                        Giriş et
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -402,7 +544,11 @@
                                             <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-1">Vendor</p>
                                             <h3 className="text-xl font-bold text-slate-900">{latestReceipt.vendor}</h3>
                                             <p className="text-sm text-slate-500 mt-1">
-                                                {new Date(latestReceipt.date).toLocaleDateString('az-AZ', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                                {new Date(latestReceipt.date).toLocaleDateString('az-AZ', {
+                                                    day: 'numeric',
+                                                    month: 'long',
+                                                    year: 'numeric'
+                                                })}
                                             </p>
                                         </div>
                                         <div className="text-right">
@@ -465,7 +611,8 @@
                                     className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm hover:bg-white/30 transition-colors"
                                 >
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                                     </svg>
                                 </button>
                             </div>
@@ -510,7 +657,8 @@
                                 ) : (
                                     receipts.map(receipt => (
                                         <div key={receipt.id} className="bg-white rounded-2xl p-4 shadow-md flex items-center gap-4">
-                                            <div className="w-14 h-14 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                                            <div
+                                                className="w-14 h-14 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-xl flex items-center justify-center flex-shrink-0">
                                                 <span className="text-2xl">📄</span>
                                             </div>
                                             <div className="flex-1 min-w-0">
@@ -534,12 +682,14 @@
                                 <div className="flex-1 overflow-y-auto space-y-4 mb-4">
                                     <div className="chat-bubble-ai rounded-2xl p-4 max-w-[85%]">
                                         <div className="flex items-start gap-3">
-                                            <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                                            <div
+                                                className="w-8 h-8 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-lg flex items-center justify-center flex-shrink-0">
                                                 <span className="text-lg">🤖</span>
                                             </div>
                                             <div>
                                                 <p className="text-slate-700 text-sm leading-relaxed mb-2">
-                                                    Salam! Mən sizin AI maliyyə məsləhətçinizəm. Büdcə, xərclər və kredit haqqında suallarınızı verə bilərsiniz.
+                                                    Salam! Mən sizin AI maliyyə məsləhətçinizəm. Büdcə, xərclər və kredit haqqında suallarınızı
+                                                    verə bilərsiniz.
                                                 </p>
                                             </div>
                                         </div>
@@ -547,10 +697,11 @@
 
                                     {chatMessages.map((msg, idx) => (
                                         <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                            <div className={`max-w-[85%] p-4 rounded-2xl ${msg.role === 'user'
+                                            <div
+                                                className={`max-w-[85%] p-4 rounded-2xl ${msg.role === 'user'
                                                     ? 'chat-bubble-user text-white'
                                                     : 'chat-bubble-ai text-slate-700'
-                                                }`}>
+                                                    }`}>
                                                 <p className="text-sm leading-relaxed">{msg.content}</p>
                                             </div>
                                         </div>
@@ -571,7 +722,8 @@
                                         className="w-12 h-12 gradient-bg rounded-xl flex items-center justify-center text-white active:scale-95 transition-all"
                                     >
                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                                d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                                         </svg>
                                     </button>
                                 </div>
@@ -580,13 +732,15 @@
                     </div>
 
                     {/* Bottom Navigation */}
-                    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-6 py-4 flex justify-around items-center shadow-2xl">
+                    <div
+                        className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-6 py-4 flex justify-around items-center shadow-2xl">
                         <button
                             onClick={() => setActiveTab('dashboard')}
                             className={`flex flex-col items-center gap-1 ${activeTab === 'dashboard' ? 'text-purple-600' : 'text-slate-400'}`}
                         >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                    d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                             </svg>
                             <span className="text-xs font-medium">Ana Səhifə</span>
                         </button>
@@ -596,7 +750,8 @@
                             className="w-16 h-16 -mt-8 gradient-bg rounded-full flex items-center justify-center text-white shadow-2xl active:scale-95 transition-all"
                         >
                             <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                    d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                             </svg>
                         </button>
 
@@ -605,7 +760,8 @@
                             className={`flex flex-col items-center gap-1 ${activeTab === 'chat' ? 'text-purple-600' : 'text-slate-400'}`}
                         >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                             </svg>
                             <span className="text-xs font-medium">AI Chat</span>
                         </button>
@@ -636,7 +792,8 @@
                                 </div>
 
                                 <p className="text-sm text-slate-600 mb-4">
-                                    AI ilə daha ağıllı söhbət üçün OpenAI API açarınızı daxil edin. Açar yalnız sizin brauzerinizdə saxlanılır.
+                                    AI ilə daha ağıllı söhbət üçün OpenAI API açarınızı daxil edin. Açar yalnız sizin brauzerinizdə
+                                    saxlanılır.
                                 </p>
 
                                 <div className="mb-4">
@@ -651,7 +808,8 @@
                                         className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition-all text-sm font-mono"
                                     />
                                     <p className="text-xs text-slate-500 mt-2">
-                                        Açar əldə etmək üçün: <a href="https://platform.openai.com/api-keys" target="_blank" className="text-purple-600 hover:underline">platform.openai.com</a>
+                                        Açar əldə etmək üçün: <a href="https://platform.openai.com/api-keys" target="_blank"
+                                            className="text-purple-600 hover:underline">platform.openai.com</a>
                                     </p>
                                 </div>
 
@@ -676,7 +834,8 @@
                                 {hasApiKey() && (
                                     <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-xl flex items-center gap-2">
                                         <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
                                         <span className="text-sm font-medium text-green-800">API açarı aktiv</span>
                                     </div>
