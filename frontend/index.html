@@ -226,13 +226,15 @@
                     console.log('API KEY FROM LOCALSTORAGE:', apiKey);
 
 
-                    const response = await fetch('http://localhost:3000/api/chat', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            model: "gpt-4o-mini",
-                            messages: newMessages
-                        })
+                    const BASE_URL =
+                        window.location.hostname === "localhost"
+                            ? "http://localhost:3000"
+                            : "https://maliai-backend.onrender.com"; // BACK URL
+
+                    const response = await fetch(`${BASE_URL}/api/chat`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ /* ... */ })
                     });
 
                     if (!response.ok) {
