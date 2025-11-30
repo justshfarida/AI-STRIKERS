@@ -2,24 +2,28 @@
 <html lang="az">
 
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
     <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>MaliAI - Smart Business Finance</title>
+
+    <!-- React -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
+
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+        @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap");
 
         * {
             -webkit-tap-highlight-color: transparent;
-            font-family: 'Inter', sans-serif;
+            font-family: "Inter", sans-serif;
         }
 
         body {
-            background: #0f172a;
             overscroll-behavior: none;
         }
 
@@ -27,52 +31,21 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
 
-        .glass {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+        .gradient-bg-strong {
+            background: linear-gradient(135deg, #5b6ff5 0%, #8b46ff 50%, #ff4dc6 100%);
         }
 
-        .animate-pulse-slow {
-            animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-
-        .animate-scan {
-            animation: scan 2s ease-in-out infinite;
-        }
-
-        @keyframes scan {
-
-            0%,
-            100% {
-                transform: translateY(-100%);
-                opacity: 0;
-            }
-
-            50% {
-                transform: translateY(100%);
-                opacity: 1;
-            }
-        }
-
-        .gradient-text {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .chat-bubble-user {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-        }
-
-        .chat-bubble-ai {
+        .glass-light {
             background: rgba(255, 255, 255, 0.95);
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 18px 45px rgba(15, 23, 42, 0.15);
         }
 
-        .floating {
+        .glass-dark {
+            background: rgba(15, 23, 42, 0.95);
+            box-shadow: 0 18px 45px rgba(0, 0, 0, 0.7);
+        }
+
+        .animate-floating {
             animation: floating 3s ease-in-out infinite;
         }
 
@@ -80,7 +53,7 @@
 
             0%,
             100% {
-                transform: translateY(0px);
+                transform: translateY(0);
             }
 
             50% {
@@ -88,13 +61,31 @@
             }
         }
 
+        .animate-scan-line {
+            animation: scanline 2s ease-in-out infinite;
+        }
+
+        @keyframes scanline {
+
+            0%,
+            100% {
+                transform: translateY(-140%);
+                opacity: 0;
+            }
+
+            50% {
+                transform: translateY(40%);
+                opacity: 1;
+            }
+        }
+
         .scale-in {
-            animation: scaleIn 0.3s ease-out;
+            animation: scaleIn 0.25s ease-out;
         }
 
         @keyframes scaleIn {
             from {
-                transform: scale(0.9);
+                transform: scale(0.95);
                 opacity: 0;
             }
 
@@ -103,70 +94,71 @@
                 opacity: 1;
             }
         }
+
+        .backdrop-blur-strong {
+            backdrop-filter: blur(18px);
+        }
     </style>
 </head>
 
-<body>
+<body class="bg-slate-900">
     <div id="root"></div>
 
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        const ALLOWED_VIEWS = ['splash', 'login', 'register', 'dashboard'];
+        const ALLOWED_VIEWS = ["splash", "login", "register", "dashboard"];
 
         const getInitialView = () => {
-            const hash = window.location.hash.replace('#', '');
-            if (ALLOWED_VIEWS.includes(hash)) {
-                return hash;
-            }
-            return 'splash';
+            const hash = window.location.hash.replace("#", "");
+            if (ALLOWED_VIEWS.includes(hash)) return hash;
+            return "splash";
+        };
+
+        const getInitialTheme = () => {
+            if (typeof window === "undefined") return "dark";
+            const saved = localStorage.getItem("maliai_theme");
+            if (saved === "light" || saved === "dark") return saved;
+            return "dark";
         };
 
         const App = () => {
             const [view, setView] = useState(getInitialView);
-            const [activeTab, setActiveTab] = useState('dashboard');
+            const [activeTab, setActiveTab] = useState("dashboard");
+            const [theme, setTheme] = useState(getInitialTheme);
             const [user, setUser] = useState(null);
-            const [receipts, setReceipts] = useState([]);
-            const [chatMessages, setChatMessages] = useState([]);
-            const [chatInput, setChatInput] = useState('');
-            const [isProcessing, setIsProcessing] = useState(false);
-            const [showResult, setShowResult] = useState(false);
-            const [latestReceipt, setLatestReceipt] = useState(null);
-            const [showApiKeyModal, setShowApiKeyModal] = useState(false);
-            const [apiKeyInput, setApiKeyInput] = useState('');
-            const fileInputRef = useRef(null);
-            const chatEndRef = useRef(null);
 
-            // Splash auto → login
+            const [receipts, setReceipts] = useState([]);
+            const [latestReceipt, setLatestReceipt] = useState(null);
+            const [flowStep, setFlowStep] = useState(null); // "analyzing" | "categories" | "export" | null
+            const [showResult, setShowResult] = useState(false);
+
+            const [chatMessages, setChatMessages] = useState([]);
+            const [chatInput, setChatInput] = useState("");
+            const chatEndRef = useRef(null);
+            const fileInputRef = useRef(null);
+
+            // --- Splash -> Login ---
             useEffect(() => {
-                if (view === 'splash') {
-                    const t = setTimeout(() => setView('login'), 2000);
+                if (view === "splash") {
+                    const t = setTimeout(() => setView("login"), 2000);
                     return () => clearTimeout(t);
                 }
             }, [view]);
 
-            // Scroll chat to bottom
+            // --- Chat scroll ---
             useEffect(() => {
-                chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+                chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
             }, [chatMessages]);
 
-            // Load saved API key (for UI – backend əslində istifadə etmir)
-            useEffect(() => {
-                const savedKey = localStorage.getItem('openai_api_key');
-                if (savedKey) {
-                    setApiKeyInput(savedKey);
-                }
-            }, []);
-
-            // 🔁 View ↔ URL history sinxronizasiya
+            // --- History sync ---
             useEffect(() => {
                 if (!view) return;
                 const hash = `#${view}`;
-                // history state-i yenilə
                 if (window.location.hash !== hash) {
-                    window.history.pushState({ view }, '', hash);
+                    window.history.pushState({ view }, "", hash);
                 } else {
-                    window.history.replaceState({ view }, '', hash);
+                    window.history.replaceState({ view }, "", hash);
                 }
             }, [view]);
 
@@ -176,186 +168,226 @@
                     if (ALLOWED_VIEWS.includes(stateView)) {
                         setView(stateView);
                     } else {
-                        const hashView = window.location.hash.replace('#', '');
-                        if (ALLOWED_VIEWS.includes(hashView)) {
-                            setView(hashView);
-                        }
+                        const hashView = window.location.hash.replace("#", "");
+                        if (ALLOWED_VIEWS.includes(hashView)) setView(hashView);
                     }
                 };
-
-                window.addEventListener('popstate', handlePopState);
-                return () => window.removeEventListener('popstate', handlePopState);
+                window.addEventListener("popstate", handlePopState);
+                return () => window.removeEventListener("popstate", handlePopState);
             }, []);
 
+            // --- Theme handling ---
+            useEffect(() => {
+                document.body.className =
+                    theme === "dark" ? "bg-slate-900" : "bg-slate-50";
+                localStorage.setItem("maliai_theme", theme);
+            }, [theme]);
+
+            const toggleTheme = () => {
+                setTheme((prev) => (prev === "dark" ? "light" : "dark"));
+            };
+
+            const isDark = theme === "dark";
+
+            // --- Auth forms ---
             const handleLogin = (e) => {
                 e.preventDefault();
                 const formData = new FormData(e.target);
                 setUser({
-                    name: formData.get('name'),
-                    email: formData.get('email'),
-                    business: formData.get('business')
+                    name: formData.get("name") || "istifadəçi",
+                    email: formData.get("email") || "",
+                    business: formData.get("business") || "Biznesiniz",
                 });
-                setView('dashboard');
+                setView("dashboard");
             };
 
-            // Register form – sadəcə UI, real funksionallıq yoxdur
             const handleRegister = (e) => {
                 e.preventDefault();
-                // Burda backend qeydiyyatı və s. ola bilər
-                // İndilik sadəcə login səhifəsinə qaytarırıq
-                setView('login');
+                setView("login");
             };
 
+            // --- Receipts & scanning flow ---
             const handleFileUpload = (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
 
-                setIsProcessing(true);
                 const reader = new FileReader();
                 reader.onload = (ev) => {
+                    const categories = [
+                        "Məhsullar",
+                        "Xidmətlər",
+                        "Əmək haqqı",
+                        "İcarə",
+                        "Kommunal xərclər",
+                        "Nəqliyyat",
+                        "Ofis ləvazimatları",
+                        "Marketing",
+                    ];
+                    const newReceipt = {
+                        id: Date.now(),
+                        image: ev.target.result,
+                        date: new Date().toISOString(),
+                        vendor: "Təchizatçı " + Math.floor(Math.random() * 100),
+                        amount: (Math.random() * 500 + 50).toFixed(2),
+                        category: categories[Math.floor(Math.random() * categories.length)],
+                        confidence: 90 + Math.floor(Math.random() * 10),
+                    };
+
+                    setLatestReceipt(newReceipt);
+                    setReceipts((prev) => [newReceipt, ...prev]);
+
+                    // ardıcıl pəncərə axını
+                    setFlowStep("analyzing");
+                    setShowResult(false);
+
+                    // Buradakı vaxtları dəyişərək hər pəncərənin müddətini idarə edə bilərsən
+                    setTimeout(() => setFlowStep("categories"), 1600); // 1-ci pəncərə müddəti
+                    setTimeout(() => setFlowStep("export"), 3200);     // 2-ci pəncərə müddəti
                     setTimeout(() => {
-                        const categories = ['Məhsullar', 'Xidmətlər', 'Əmək haqqı', 'İcarə', 'Kommunal', 'Nəqliyyat', 'Ofis ləvazimatları', 'Marketing'];
-                        const newReceipt = {
-                            id: Date.now(),
-                            image: ev.target.result,
-                            date: new Date().toISOString(),
-                            vendor: 'Vendor ' + Math.floor(Math.random() * 100),
-                            amount: (Math.random() * 500 + 50).toFixed(2),
-                            category: categories[Math.floor(Math.random() * categories.length)],
-                            confidence: 92 + Math.floor(Math.random() * 8)
-                        };
-                        setLatestReceipt(newReceipt);
-                        setReceipts(prev => [newReceipt, ...prev]);
-                        setIsProcessing(false);
-                        setShowResult(true);
-                    }, 2500);
+                        setFlowStep(null);
+                        setShowResult(true);                            // 3-cü pəncərə bitir, nəticə kartı
+                    }, 5000);
                 };
                 reader.readAsDataURL(file);
             };
 
-            const totalExpense = receipts.reduce((acc, r) => acc + parseFloat(r.amount), 0);
+            const totalExpense = receipts.reduce(
+                (acc, r) => acc + parseFloat(r.amount),
+                0
+            );
 
+            // --- Chat ---
             const sendMessage = async () => {
                 if (!chatInput.trim()) return;
 
-                const userMessage = chatInput;
-                const newMessages = [...chatMessages, { role: 'user', content: userMessage }];
+                const userMessage = chatInput.trim();
+                const newMessages = [
+                    ...chatMessages,
+                    { role: "user", content: userMessage },
+                ];
                 setChatMessages(newMessages);
-                setChatInput('');
+                setChatInput("");
 
-                // API key yalnız UI üçün istifadə olunur (mock/real seçimi)
-                const apiKey = localStorage.getItem('openai_api_key');
+                // Daha real maliyyə məsləhətçi konteksti
+                const categoriesText =
+                    receipts.length > 0
+                        ? Array.from(new Set(receipts.map((r) => r.category))).join(", ")
+                        : "hələ heç bir kateqoriya yoxdur";
 
-                if (!apiKey) {
-                    // Mock cavablar (əgər API açarı qoyulmayıbsa)
-                    setTimeout(() => {
-                        const responses = [
-                            'Sizin cari ayın xərclərinə əsasən, yeni işçi işə götürmək üçün aylıq büdcənizin 15%-ni artırmalısınız.',
-                            'Son 3 ayın maliyyə hesabatınıza görə, kredit almaq üçün kifayət qədər güclü cash flow-unuz var.',
-                            'Məhsul xərclərinizdə 23% artım var. Təchizatçı qiymətlərini yenidən nəzərdən keçirməyi tövsiyə edirəm.',
-                            'Büdcənizin 40%-i əmək haqqına gedir. Sənaye ortalaması 35%-dir. Optimizasiya məsləhətləri göstərə bilərəm.'
-                        ];
-                        setChatMessages(prev => [...prev, {
-                            role: 'assistant',
-                            content: responses[Math.floor(Math.random() * responses.length)]
-                        }]);
-                    }, 1000);
-                    return;
-                }
+                const financialContext = `
+Sən Azərbaycan dilində danışan peşəkar AI maliyyə məsləhətçisisən. 
+Sənin əsas məqsədin istifadəçinin yüklədiyi qəbzlərə və xərclər strukturuna əsaslanaraq praktik, detallı və biznes yönümlü tövsiyələr verməkdir.
+
+Mövcud məlumatlar:
+- Biznesin adı: ${user?.business || "naməlum"}
+- Cari ay üzrə ümumi xərclər: ${totalExpense.toFixed(2)} ₼
+- Qeydiyyata alınmış qəbzlərin sayı: ${receipts.length}
+- Xərc kateqoriyaları: ${categoriesText}
+
+Tövsiyələrində aşağıdakı məqamları nəzərə al:
+1. Xərcləri kateqoriyalar üzrə analiz et (məsələn, icarə, əmək haqqı, kommunal, nəqliyyat, ofis ləvazimatları və s.) və harada optimallaşdırma imkanı olduğunu izah et.
+2. Nağd pul axını, büdcə planlaması, qənaət potensialı və risklər barədə konkret, addım-addım məsləhətlər ver.
+3. Lazım gəldikdə kredit götürülməsi, ödəniş qrafiki və borc yükünün idarə olunması barədə də tövsiyələr ver.
+4. Həddindən artıq texniki terminlərdən qaç, daha çox sahibkar üçün başa düşülən, aydın dildə yaz.
+5. Cavabını strukturlaşdır: qısa giriş, sonra maddələrlə əsas tövsiyələr, sonda isə yekun nəticə və növbəti addımlar.
+
+Həmişə yalnız Azərbaycan dilində cavab ver və istifadəçinin son sualını bu kontekstə uyğun şəkildə cavablandır.
+        `;
+
+                // Backend URL seçimi
+                const BASE_URL =
+                    window.location.hostname === "localhost" ||
+                        window.location.hostname === "127.0.0.1"
+                        ? "http://localhost:3000"
+                        : "https://maliai-backend.onrender.com";
 
                 try {
-                    const financialContext = `
-            Siz Azərbaycan KOB-ları üçün AI maliyyə məsləhətçisisiniz.
-            İstifadəçi məlumatları:
-            - Biznes: ${user?.business}
-            - Ümumi xərc: ${totalExpense.toFixed(2)}₼
-            - Qəbz sayı: ${receipts.length}
-            - Kateqoriyalar: ${receipts.map(r => r.category).join(', ')}
-
-            Azərbaycan dilində cavab verin və konkret məsləhətlər verin.
-          `;
-
-                    // 🔗 Backend proxy çağırışı (Node.js server)
-                    const response = await fetch('http://localhost:3000/api/chat', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
+                    const response = await fetch(`${BASE_URL}/api/chat`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
-                            model: 'gpt-4o-mini',
+                            model: "gpt-4o-mini",
                             messages: [
-                                { role: 'system', content: financialContext },
-                                ...newMessages.map(m => ({ role: m.role, content: m.content }))
+                                { role: "system", content: financialContext },
+                                ...newMessages.map((m) => ({
+                                    role: m.role,
+                                    content: m.content,
+                                })),
                             ],
                             temperature: 0.7,
-                            max_tokens: 500
-                        })
+                            max_tokens: 500,
+                        }),
                     });
 
                     if (!response.ok) {
-                        throw new Error('API error');
+                        console.error("Backend HTTP error:", response.status, response.statusText);
+                        throw new Error(`HTTP ${response.status}`);
                     }
 
                     const data = await response.json();
-                    const aiResponse = data.choices?.[0]?.message?.content ?? 'Cavab alına bilmədi.';
+                    console.log("Backend response:", data);
 
-                    setChatMessages(prev => [...prev, {
-                        role: 'assistant',
-                        content: aiResponse
-                    }]);
+                    const aiResponse =
+                        data?.choices?.[0]?.message?.content ||
+                        data?.data?.choices?.[0]?.message?.content ||
+                        data?.reply ||
+                        data?.message ||
+                        data?.answer ||
+                        "Üzr istəyirəm, cavab alına bilmədi.";
+
+                    setChatMessages((prev) => [
+                        ...prev,
+                        { role: "assistant", content: aiResponse },
+                    ]);
                 } catch (error) {
-                    console.error('OpenAI API Error (backend):', error);
-                    setChatMessages(prev => [...prev, {
-                        role: 'assistant',
-                        content: 'Üzr istəyirik, xəta baş verdi. Daha sonra yenidən cəhd edin.'
-                    }]);
+                    console.error("Chat request failed:", error);
+                    setChatMessages((prev) => [
+                        ...prev,
+                        {
+                            role: "assistant",
+                            content:
+                                "Üzr istəyirəm, serverlə əlaqə saxlanılarkən xəta baş verdi. Bir az sonra yenidən cəhd edə bilərsiniz.",
+                        },
+                    ]);
                 }
             };
 
-            const saveApiKey = () => {
-                if (apiKeyInput.trim()) {
-                    localStorage.setItem('openai_api_key', apiKeyInput.trim());
-                    setShowApiKeyModal(false);
-                }
-            };
-
-            const removeApiKey = () => {
-                localStorage.removeItem('openai_api_key');
-                setApiKeyInput('');
-                setShowApiKeyModal(false);
-            };
-
-            const hasApiKey = () => {
-                return !!localStorage.getItem('openai_api_key');
-            };
-
-            // SPLASH SCREEN
-            if (view === 'splash') {
+            // ---------- SPLASH ----------
+            if (view === "splash") {
                 return (
                     <div className="h-screen gradient-bg flex items-center justify-center relative overflow-hidden">
                         <div className="absolute inset-0 opacity-20">
-                            <div className="absolute top-20 left-10 w-32 h-32 bg-white rounded-full blur-3xl animate-pulse-slow"></div>
-                            <div className="absolute bottom-20 right-10 w-40 h-40 bg-purple-300 rounded-full blur-3xl animate-pulse-slow"
-                                style={{ animationDelay: '1s' }}></div>
+                            <div className="absolute top-20 left-10 w-32 h-32 bg-white rounded-full blur-3xl animate-floating"></div>
+                            <div
+                                className="absolute bottom-20 right-10 w-40 h-40 bg-purple-300 rounded-full blur-3xl animate-floating"
+                                style={{ animationDelay: "0.8s" }}
+                            ></div>
                         </div>
                         <div className="text-center z-10 scale-in">
-                            <div className="w-24 h-24 bg-white rounded-3xl mx-auto mb-6 flex items-center justify-center shadow-2xl floating">
+                            <div className="w-24 h-24 bg-white rounded-3xl mx-auto mb-6 flex items-center justify-center shadow-2xl animate-floating">
                                 <span className="text-5xl">💼</span>
                             </div>
-                            <h1 className="text-5xl font-black text-white mb-2">MaliAI</h1>
-                            <p className="text-white/80 text-lg font-medium">Ağıllı Biznes Maliyyəsi</p>
+                            <h1 className="text-5xl font-black text-white mb-2">
+                                MaliAI
+                            </h1>
+                            <p className="text-white/80 text-lg font-medium">
+                                Ağıllı Biznes Maliyyəsi
+                            </p>
                         </div>
                     </div>
                 );
             }
 
-            // LOGIN SCREEN
-            if (view === 'login') {
+            // ---------- LOGIN ----------
+            if (view === "login") {
                 return (
-                    <div className="min-h-screen gradient-bg flex items-center justify-center p-6 relative overflow-hidden">
-                        <div className="absolute inset-0 opacity-10">
-                            <div className="absolute top-0 left-0 w-64 h-64 bg-white rounded-full blur-3xl"></div>
-                            <div className="absolute bottom-0 right-0 w-64 h-64 bg-purple-300 rounded-full blur-3xl"></div>
+                    <div
+                        className={`min-h-screen flex items-center justify-center p-6 relative overflow-hidden ${isDark ? "bg-slate-900" : "bg-slate-50"
+                            }`}
+                    >
+                        <div className="absolute inset-0 opacity-10 pointer-events-none">
+                            <div className="absolute top-0 left-0 w-64 h-64 bg-purple-400 rounded-full blur-3xl"></div>
+                            <div className="absolute bottom-0 right-0 w-72 h-72 bg-indigo-400 rounded-full blur-3xl"></div>
                         </div>
 
                         <div className="w-full max-w-md z-10 scale-in">
@@ -363,18 +395,25 @@
                                 <div className="w-20 h-20 bg-white rounded-3xl mx-auto mb-4 flex items-center justify-center shadow-2xl">
                                     <span className="text-4xl">💼</span>
                                 </div>
-                                <h1 className="text-4xl font-black text-white mb-2">MaliAI</h1>
-                                <p className="text-white/80 text-lg">AI ilə biznesinizi idarə edin</p>
+                                <h1 className="text-4xl font-black text-slate-900 mb-2">
+                                    MaliAI
+                                </h1>
+                                <p className="text-slate-600 text-lg">
+                                    AI ilə biznes xərclərinizi idarə edin
+                                </p>
                             </div>
 
-                            <div className="glass rounded-3xl p-8 shadow-2xl">
+                            <div
+                                className={`${isDark ? "glass-dark text-white" : "glass-light text-slate-900"
+                                    } rounded-3xl p-8`}
+                            >
                                 <form onSubmit={handleLogin} className="space-y-4">
                                     <div>
                                         <input
                                             name="name"
                                             required
                                             placeholder="Adınız və Soyadınız"
-                                            className="w-full px-5 py-4 rounded-2xl bg-white/90 border-0 focus:outline-none focus:ring-2 focus:ring-white/50 text-slate-800 font-medium placeholder:text-slate-400"
+                                            className="w-full px-5 py-4 rounded-2xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500 text-slate-800 placeholder:text-slate-400"
                                         />
                                     </div>
                                     <div>
@@ -383,7 +422,7 @@
                                             type="email"
                                             required
                                             placeholder="Email ünvanınız"
-                                            className="w-full px-5 py-4 rounded-2xl bg-white/90 border-0 focus:outline-none focus:ring-2 focus:ring-white/50 text-slate-800 font-medium placeholder:text-slate-400"
+                                            className="w-full px-5 py-4 rounded-2xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500 text-slate-800 placeholder:text-slate-400"
                                         />
                                     </div>
                                     <div>
@@ -391,22 +430,22 @@
                                             name="business"
                                             required
                                             placeholder="Biznesinizin adı"
-                                            className="w-full px-5 py-4 rounded-2xl bg-white/90 border-0 focus:outline-none focus:ring-2 focus:ring-white/50 text-slate-800 font-medium placeholder:text-slate-400"
+                                            className="w-full px-5 py-4 rounded-2xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500 text-slate-800 placeholder:text-slate-400"
                                         />
                                     </div>
                                     <button
                                         type="submit"
-                                        className="w-full py-4 rounded-2xl bg-white text-purple-600 font-bold text-lg shadow-xl hover:shadow-2xl active:scale-95 transition-all"
+                                        className="w-full py-4 rounded-2xl gradient-bg-strong text-white font-bold text-lg shadow-xl hover:shadow-2xl active:scale-95 transition-all"
                                     >
                                         Giriş
                                     </button>
                                 </form>
 
-                                <div className="mt-4 text-center text-white/80 text-sm">
-                                    Hesabınız yoxdur?{' '}
+                                <div className="mt-4 text-center text-sm">
+                                    Hesabınız yoxdur?{" "}
                                     <button
                                         type="button"
-                                        onClick={() => setView('register')}
+                                        onClick={() => setView("register")}
                                         className="font-semibold underline"
                                     >
                                         Qeydiyyatdan keçin
@@ -418,13 +457,16 @@
                 );
             }
 
-            // REGISTER SCREEN (yalnız UI)
-            if (view === 'register') {
+            // ---------- REGISTER ----------
+            if (view === "register") {
                 return (
-                    <div className="min-h-screen gradient-bg flex items-center justify-center p-6 relative overflow-hidden">
-                        <div className="absolute inset-0 opacity-10">
-                            <div className="absolute top-0 left-0 w-64 h-64 bg-white rounded-full blur-3xl"></div>
-                            <div className="absolute bottom-0 right-0 w-64 h-64 bg-purple-300 rounded-full blur-3xl"></div>
+                    <div
+                        className={`min-h-screen flex items-center justify-center p-6 relative overflow-hidden ${isDark ? "bg-slate-900" : "bg-slate-50"
+                            }`}
+                    >
+                        <div className="absolute inset-0 opacity-10 pointer-events-none">
+                            <div className="absolute top-0 left-0 w-64 h-64 bg-purple-400 rounded-full blur-3xl"></div>
+                            <div className="absolute bottom-0 right-0 w-72 h-72 bg-indigo-400 rounded-full blur-3xl"></div>
                         </div>
 
                         <div className="w-full max-w-md z-10 scale-in">
@@ -432,18 +474,25 @@
                                 <div className="w-20 h-20 bg-white rounded-3xl mx-auto mb-4 flex items-center justify-center shadow-2xl">
                                     <span className="text-4xl">📝</span>
                                 </div>
-                                <h1 className="text-4xl font-black text-white mb-2">Qeydiyyat</h1>
-                                <p className="text-white/80 text-lg">MaliAI hesabınızı yaradın</p>
+                                <h1 className="text-4xl font-black text-slate-900 mb-2">
+                                    Qeydiyyat
+                                </h1>
+                                <p className="text-slate-600 text-lg">
+                                    MaliAI hesabınızı yaradın
+                                </p>
                             </div>
 
-                            <div className="glass rounded-3xl p-8 shadow-2xl">
+                            <div
+                                className={`${isDark ? "glass-dark text-white" : "glass-light text-slate-900"
+                                    } rounded-3xl p-8`}
+                            >
                                 <form onSubmit={handleRegister} className="space-y-4">
                                     <div>
                                         <input
                                             name="name"
                                             required
                                             placeholder="Adınız və Soyadınız"
-                                            className="w-full px-5 py-4 rounded-2xl bg-white/90 border-0 focus:outline-none focus:ring-2 focus:ring-white/50 text-slate-800 font-medium placeholder:text-slate-400"
+                                            className="w-full px-5 py-4 rounded-2xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500 text-slate-800 placeholder:text-slate-400"
                                         />
                                     </div>
                                     <div>
@@ -452,7 +501,7 @@
                                             type="email"
                                             required
                                             placeholder="Email ünvanınız"
-                                            className="w-full px-5 py-4 rounded-2xl bg-white/90 border-0 focus:outline-none focus:ring-2 focus:ring-white/50 text-slate-800 font-medium placeholder:text-slate-400"
+                                            className="w-full px-5 py-4 rounded-2xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500 text-slate-800 placeholder:text-slate-400"
                                         />
                                     </div>
                                     <div>
@@ -460,7 +509,7 @@
                                             name="business"
                                             required
                                             placeholder="Biznesinizin adı"
-                                            className="w-full px-5 py-4 rounded-2xl bg-white/90 border-0 focus:outline-none focus:ring-2 focus:ring-white/50 text-slate-800 font-medium placeholder:text-slate-400"
+                                            className="w-full px-5 py-4 rounded-2xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500 text-slate-800 placeholder:text-slate-400"
                                         />
                                     </div>
                                     <div>
@@ -468,22 +517,22 @@
                                             name="password"
                                             type="password"
                                             placeholder="Şifrə (placeholder)"
-                                            className="w-full px-5 py-4 rounded-2xl bg-white/90 border-0 focus:outline-none focus:ring-2 focus:ring-white/50 text-slate-800 font-medium placeholder:text-slate-400"
+                                            className="w-full px-5 py-4 rounded-2xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500 text-slate-800 placeholder:text-slate-400"
                                         />
                                     </div>
                                     <button
                                         type="submit"
-                                        className="w-full py-4 rounded-2xl bg-white text-purple-600 font-bold text-lg shadow-xl hover:shadow-2xl active:scale-95 transition-all"
+                                        className="w-full py-4 rounded-2xl gradient-bg-strong text-white font-bold text-lg shadow-xl hover:shadow-2xl active:scale-95 transition-all"
                                     >
                                         Qeydiyyatı tamamla
                                     </button>
                                 </form>
 
-                                <div className="mt-4 text-center text-white/80 text-sm">
-                                    Artıq hesabınız var?{' '}
+                                <div className="mt-4 text-center text-sm">
+                                    Artıq hesabınız var?{" "}
                                     <button
                                         type="button"
-                                        onClick={() => setView('login')}
+                                        onClick={() => setView("login")}
                                         className="font-semibold underline"
                                     >
                                         Giriş et
@@ -495,90 +544,319 @@
                 );
             }
 
-            // PROCESSING SCREEN
-            if (isProcessing) {
+            // ---------- SCAN FLOW WINDOWS ----------
+            if (flowStep === "analyzing") {
                 return (
-                    <div className="h-screen bg-slate-900 flex flex-col items-center justify-center p-6">
-                        <div className="relative w-64 h-64 mb-8">
-                            <div className="absolute inset-0 border-4 border-purple-500/30 rounded-3xl"></div>
-                            <div className="absolute inset-0 border-4 border-purple-500 rounded-3xl animate-pulse"></div>
-                            <div className="absolute inset-0 flex items-center justify-center">
-                                <div className="w-32 h-1 bg-gradient-to-r from-transparent via-purple-400 to-transparent animate-scan"></div>
+                    <div
+                        className="h-screen bg-slate-950 flex flex-col items-center justify-center text-center px-6"
+                    >
+                        <div className="scale-in max-w-md w-full">
+                            <div className="mx-auto w-56 h-56 border-4 border-purple-500/60 rounded-3xl flex items-center justify-center relative">
+                                <div className="absolute inset-2 rounded-2xl border border-purple-400/40"></div>
+                                <div className="absolute inset-4 rounded-2xl border border-purple-400/30 overflow-hidden">
+                                    <div className="w-full h-1 bg-gradient-to-r from-transparent via-purple-400 to-transparent animate-scan-line"></div>
+                                </div>
+                                <div className="relative z-10 w-24 h-24 rounded-3xl bg-slate-900 flex items-center justify-center shadow-2xl">
+                                    <span className="text-5xl">🤖</span>
+                                </div>
                             </div>
-                            <div className="absolute inset-0 flex items-center justify-center">
-                                <span className="text-6xl">🤖</span>
-                            </div>
+
+                            <h2 className="text-3xl font-extrabold text-white mt-10 mb-3">
+                                AI Analiz Edir
+                            </h2>
+                            <p className="text-purple-200 max-w-sm mx-auto text-sm">
+                                Qəbz skan edilir, məlumatlar çıxarılır və xərclər avtomatik
+                                kateqoriyalaşdırılır...
+                            </p>
                         </div>
-                        <h2 className="text-2xl font-bold text-white mb-2">AI Analiz Edir</h2>
-                        <p className="text-purple-300 text-center max-w-xs">
-                            Qəbz skan edilir və avtomatik kateqoriyalaşdırılır...
-                        </p>
                     </div>
                 );
             }
 
-            // RESULT SCREEN
+            if (flowStep === "categories") {
+                return (
+                    <div
+                        className="h-screen flex items-center justify-center px-4"
+                        style={{ background: "#050816" }}
+                    >
+                        <div className="max-w-4xl w-full scale-in">
+                            <div className="grid md:grid-cols-2 gap-6">
+                                <div className="rounded-3xl bg-slate-900/90 text-white p-8 shadow-2xl">
+                                    <h3 className="text-sm font-semibold text-purple-300 tracking-[0.25em] mb-2">
+                                        ADDIM 2
+                                    </h3>
+                                    <h2 className="text-2xl md:text-3xl font-extrabold mb-6">
+                                        Ağıllı kateqoriyalar
+                                    </h2>
+                                    <p className="text-slate-300 text-sm mb-4">
+                                        MaliAI xərclərinizi avtomatik kateqoriyalara bölür və
+                                        hər kateqoriya üzrə xərclərin payını hesablayır.
+                                    </p>
+
+                                    <div className="bg-slate-800/80 rounded-2xl p-4 space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-xl">📦</span>
+                                                <div>
+                                                    <p className="text-sm font-semibold">
+                                                        Mal-material xərcləri
+                                                    </p>
+                                                    <p className="text-xs text-slate-400">COGS</p>
+                                                </div>
+                                            </div>
+                                            <span className="text-xs text-emerald-400 font-semibold">
+                                                Sürətli artım
+                                            </span>
+                                        </div>
+
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-xl">💼</span>
+                                                <div>
+                                                    <p className="text-sm font-semibold">
+                                                        Operativ xərclər
+                                                    </p>
+                                                    <p className="text-xs text-slate-400">OPEX</p>
+                                                </div>
+                                            </div>
+                                            <span className="text-xs text-sky-400 font-semibold">
+                                                Stabil
+                                            </span>
+                                        </div>
+
+                                        <div className="flex items-center justify-between bg-indigo-500/30 rounded-xl px-3 py-2 border border-indigo-400/60">
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-xl">⚡</span>
+                                                <div>
+                                                    <p className="text-sm font-semibold">
+                                                        Kommunal xərclər
+                                                    </p>
+                                                    <p className="text-xs text-slate-300">
+                                                        Seçilmiş kateqoriya
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <span className="text-xs text-indigo-100 font-semibold">
+                                                CAT
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="rounded-3xl bg-slate-900/90 text-white p-8 shadow-2xl">
+                                    <h3 className="text-sm font-semibold text-purple-300 tracking-[0.25em] mb-2">
+                                        ANALİZ
+                                    </h3>
+                                    <h2 className="text-2xl font-extrabold mb-4">
+                                        Xərclərin strukturu
+                                    </h2>
+                                    <p className="text-sm text-slate-300 mb-6">
+                                        MaliAI son qəbzlərinizə əsasən xərclərin bölgüsünü təhlil
+                                        edir və hansı istiqamətdə optimallaşdırma edə biləcəyinizi
+                                        müəyyənləşdirir.
+                                    </p>
+                                    <ul className="space-y-2 text-sm text-slate-200">
+                                        <li>• Yüklənən bütün qəbzlər sistemə tarix, məbləğ və təchizatçı adı daxil edilməklə qeyd olunur.</li>
+                                        <li>• Qəbz şəkillərinin keyfiyyəti yoxlanılır, oxunmayan və ya natamam qəbzlərin yenidən yüklənməsi tələb olunur.</li>
+                                        <li>• Hər bir qəbz müvafiq xərc kateqoriyasına (kommunal, operativ, mal-material və s.) bağlanır.</li>
+                                        <li>• Sistem eyni tarix və məbləğlə olan qəbzləri dublikat riski baxımından avtomatik işarələyir.</li>
+                                        <li>• Qəbz məlumatları aylıq və rüblük maliyyə hesabatlarına inteqrasiya edilir.</li>
+                                        <li>• Yüklənmiş qəbzlər ən azı 5 il müddətinə elektron arxivdə saxlanılır.</li>
+                                        <li>• Nəğd ödənişlər üzrə bütün xərclər yalnız uyğun qəbz təqdim olunduqda sistemə daxil edilir.</li>
+                                        <li>• Xarici valyutada olan qəbzlər üçün sistem günün məzənnəsinə əsasən avtomatik çevirmə aparır.</li>
+                                        <li>• Audit və daxili yoxlamalar zamanı bütün qəbzlər sistemdən PDF formatında export oluna bilir.</li>
+                                        <li>• Qəbz yükləmə prosesi üçün məsul şəxslər və son tarixlər daxili prosedurlarla müəyyən edilib və izlənilir.</li>
+
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (flowStep === "export") {
+                return (
+                    <div
+                        className="h-screen flex items-center justify-center px-4"
+                        style={{ background: "#050816" }}
+                    >
+                        <div className="max-w-4xl w-full scale-in glass-dark rounded-3xl p-8 text-white relative">
+                            <button
+                                onClick={() => {
+                                    setFlowStep(null);
+                                    setShowResult(true);
+                                }}
+                                className="absolute top-4 right-4 w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center hover:bg-slate-700 transition-colors"
+                            >
+                                ✕
+                            </button>
+
+                            <div className="grid md:grid-cols-3 gap-6">
+                                <div className="md:col-span-1">
+                                    <h3 className="text-sm font-semibold text-emerald-300 tracking-[0.25em] mb-2">
+                                        ADDIM 3
+                                    </h3>
+                                    <h2 className="text-2xl font-extrabold mb-3">
+                                        İxrac üçün hazır
+                                    </h2>
+                                    <p className="text-sm text-slate-300">
+                                        Qəbz məlumatları yekunlaşdı. İndi nəticələri
+                                        mühasibatlıq sistemlərinə ixrac edə bilərsiniz.
+                                    </p>
+                                </div>
+
+                                <div className="md:col-span-2 bg-slate-900/70 rounded-2xl p-6 space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-xs text-slate-400 uppercase mb-1">
+                                                Təchizatçı
+                                            </p>
+                                            <p className="font-semibold">
+                                                {latestReceipt?.vendor || "Təchizatçı"}
+                                            </p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-xs text-slate-400 uppercase mb-1">
+                                                Məbləğ
+                                            </p>
+                                            <p className="text-xl font-extrabold">
+                                                {latestReceipt?.amount || "0.00"}₼
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid sm:grid-cols-3 gap-3 text-sm text-slate-300">
+                                        <div>
+                                            <p className="text-xs text-slate-400 uppercase mb-1">
+                                                Qaimə tarixi
+                                            </p>
+                                            <p>
+                                                {latestReceipt
+                                                    ? new Date(latestReceipt.date).toLocaleDateString(
+                                                        "az-AZ"
+                                                    )
+                                                    : "--"}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-slate-400 uppercase mb-1">
+                                                ƏDV (18%)
+                                            </p>
+                                            <p>Avtomatik hesablanıb</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-slate-400 uppercase mb-1">
+                                                Kateqoriya
+                                            </p>
+                                            <p>{latestReceipt?.category || "--"}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-3 pt-2">
+                                        <button className="w-full py-3 rounded-full bg-emerald-500 hover:bg-emerald-600 text-sm font-semibold">
+                                            Excel-ə ixrac et
+                                        </button>
+                                        <button className="w-full py-3 rounded-full bg-indigo-500 hover:bg-indigo-600 text-sm font-semibold">
+                                            1C-yə ixrac et
+                                        </button>
+                                        <button className="w-full py-3 rounded-full border border-pink-400 text-sm font-semibold text-pink-200">
+                                            e-VHF XML yarat
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // ---------- RESULT CARD ----------
             if (showResult && latestReceipt) {
                 return (
-                    <div className="min-h-screen bg-slate-50 p-6 flex items-center justify-center">
-                        <div className="w-full max-w-md scale-in">
-                            <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
-                                <div className="gradient-bg p-8 text-center relative overflow-hidden">
+                    <div
+                        className={`${isDark ? "bg-slate-900" : "bg-slate-100"
+                            } min-h-screen flex items-center justify-center px-4`}
+                    >
+                        <div className="max-w-md w-full scale-in">
+                            <div
+                                className={`${isDark ? "glass-dark text-white" : "glass-light text-slate-900"
+                                    } rounded-3xl overflow-hidden`}
+                            >
+                                <div className="gradient-bg-strong p-8 text-center relative overflow-hidden">
                                     <div className="absolute inset-0 opacity-20">
                                         <div className="absolute top-0 right-0 w-32 h-32 bg-white rounded-full blur-2xl"></div>
                                     </div>
                                     <div className="relative z-10">
                                         <div className="w-16 h-16 bg-white/20 rounded-full mx-auto mb-4 flex items-center justify-center backdrop-blur-sm">
-                                            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                            </svg>
+                                            <span className="text-3xl">✅</span>
                                         </div>
-                                        <h2 className="text-2xl font-black text-white mb-2">Uğurla Emal Olundu!</h2>
-                                        <p className="text-white/80">AI Güvənlik: {latestReceipt.confidence}%</p>
+                                        <h2 className="text-2xl font-black text-white mb-2">
+                                            Uğurla Emal Olundu!
+                                        </h2>
+                                        <p className="text-white/80">
+                                            AI Güvənlik: {latestReceipt.confidence}%
+                                        </p>
                                     </div>
                                 </div>
 
-                                <div className="p-6">
-                                    <div className="flex justify-between items-start mb-6">
+                                <div className="p-6 space-y-6">
+                                    <div className="flex justify-between items-start">
                                         <div>
-                                            <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-1">Vendor</p>
-                                            <h3 className="text-xl font-bold text-slate-900">{latestReceipt.vendor}</h3>
+                                            <p className="text-xs text-slate-500 font-semibold uppercase mb-1">
+                                                Vendor
+                                            </p>
+                                            <h3 className="text-xl font-bold">
+                                                {latestReceipt.vendor}
+                                            </h3>
                                             <p className="text-sm text-slate-500 mt-1">
-                                                {new Date(latestReceipt.date).toLocaleDateString('az-AZ', {
-                                                    day: 'numeric',
-                                                    month: 'long',
-                                                    year: 'numeric'
-                                                })}
+                                                {new Date(latestReceipt.date).toLocaleDateString(
+                                                    "az-AZ",
+                                                    {
+                                                        day: "numeric",
+                                                        month: "long",
+                                                        year: "numeric",
+                                                    }
+                                                )}
                                             </p>
                                         </div>
                                         <div className="text-right">
-                                            <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-1">Məbləğ</p>
-                                            <h3 className="text-3xl font-black gradient-text">{latestReceipt.amount}₼</h3>
+                                            <p className="text-xs text-slate-500 font-semibold uppercase mb-1">
+                                                Məbləğ
+                                            </p>
+                                            <p className="text-3xl font-extrabold text-indigo-600">
+                                                {latestReceipt.amount}₼
+                                            </p>
                                         </div>
                                     </div>
 
-                                    <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-2xl p-4 mb-6 border border-purple-100">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center shadow-sm">
-                                                <span className="text-2xl">📊</span>
-                                            </div>
-                                            <div>
-                                                <p className="text-xs text-slate-600 font-semibold">AI Kateqoriya</p>
-                                                <p className="text-lg font-bold text-slate-900">{latestReceipt.category}</p>
-                                            </div>
+                                    <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl p-4 border border-indigo-100 flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow">
+                                            <span className="text-xl">📊</span>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-slate-500 font-semibold uppercase mb-1">
+                                                AI Kateqoriya
+                                            </p>
+                                            <p className="text-sm font-semibold text-slate-900">
+                                                {latestReceipt.category}
+                                            </p>
                                         </div>
                                     </div>
 
                                     <div className="space-y-3">
                                         <button
-                                            onClick={() => { setShowResult(false); setActiveTab('dashboard'); }}
-                                            className="w-full py-4 rounded-2xl gradient-bg text-white font-bold shadow-xl active:scale-95 transition-all"
+                                            onClick={() => {
+                                                setShowResult(false);
+                                                setActiveTab("dashboard");
+                                            }}
+                                            className="w-full py-3 rounded-2xl gradient-bg-strong text-white font-semibold shadow-md active:scale-95 transition-all"
                                         >
                                             Dashboard-a Qayıt
                                         </button>
                                         <button
                                             onClick={() => setShowResult(false)}
-                                            className="w-full py-4 text-slate-500 font-medium hover:text-slate-800 transition-colors"
+                                            className="w-full py-3 rounded-2xl border border-slate-200 text-slate-600 font-medium hover:bg-slate-50"
                                         >
                                             Düzəliş et
                                         </button>
@@ -590,182 +868,306 @@
                 );
             }
 
-            // MAIN DASHBOARD
+            // ---------- MAIN DASHBOARD ----------
             return (
-                <div className="min-h-screen bg-slate-50 pb-24">
-                    {/* Header */}
-                    <div className="gradient-bg text-white p-6 pb-8 rounded-b-3xl shadow-xl">
-                        <div className="flex justify-between items-center mb-6">
-                            <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
-                                    <span className="text-2xl">💼</span>
-                                </div>
-                                <div>
-                                    <h1 className="text-lg font-bold">Salam, {user?.name}</h1>
-                                    <p className="text-sm text-white/70">{user?.business}</p>
-                                </div>
+                <div
+                    className={`min-h-screen flex flex-col pb-24 ${isDark ? "bg-slate-900" : "bg-slate-50"
+                        }`}
+                >
+                    {/* Top header */}
+                    <header
+                        className={`${isDark ? "bg-slate-950" : "bg-white"
+                            } shadow-md px-4 sm:px-6 py-4 flex items-center justify-between`}
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-500 to-indigo-500 flex items-center justify-center text-white shadow-lg">
+                                <span className="text-xl">💼</span>
                             </div>
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => { setUser(null); setView('login'); }}
-                                    className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm hover:bg-white/30 transition-colors"
+                            <div>
+                                <p
+                                    className={`text-xs font-semibold tracking-[0.25em] uppercase ${isDark ? "text-slate-400" : "text-slate-500"
+                                        }`}
                                 >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                                    </svg>
-                                </button>
+                                    MaliAI Dashboard
+                                </p>
+                                <p
+                                    className={`text-sm font-semibold ${isDark ? "text-white" : "text-slate-900"
+                                        }`}
+                                >
+                                    Salam, {user?.name || "istifadəçi"}
+                                </p>
+                                <p
+                                    className={`text-xs ${isDark ? "text-slate-400" : "text-slate-500"
+                                        }`}
+                                >
+                                    {user?.business || "Biznesiniz"}
+                                </p>
                             </div>
                         </div>
 
-                        {/* Stats */}
-                        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4">
-                            <p className="text-white/70 text-sm mb-1">Ümumi Xərc (Bu Ay)</p>
-                            <h2 className="text-4xl font-black">{totalExpense.toFixed(2)}₼</h2>
-                            <div className="flex gap-4 mt-4">
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={toggleTheme}
+                                className={`${isDark ? "bg-slate-800 text-yellow-300" : "bg-slate-100 text-slate-700"
+                                    } w-10 h-10 rounded-2xl flex items-center justify-center shadow-md active:scale-95 transition-all`}
+                                title="Dark / Light"
+                            >
+                                {isDark ? "🌙" : "☀️"}
+                            </button>
+
+                            <button
+                                onClick={() => {
+                                    setUser(null);
+                                    setView("login");
+                                }}
+                                className="px-4 h-10 rounded-2xl bg-slate-900 text-white text-sm font-semibold flex items-center gap-2 shadow-lg"
+                            >
+                                <span>Çıxış</span>
+                            </button>
+                        </div>
+                    </header>
+
+                    {/* Summary strip */}
+                    <section className="px-4 sm:px-6 pt-4">
+                        <div className="gradient-bg rounded-3xl p-6 text-white shadow-xl flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+                            <div>
+                                <p className="text-sm text-white/80 mb-1">Ümumi Xərc (bu ay)</p>
+                                <p className="text-4xl font-extrabold leading-none">
+                                    {totalExpense.toFixed(2)}₼
+                                </p>
+                            </div>
+                            <div className="flex gap-6 text-sm">
                                 <div>
-                                    <p className="text-white/70 text-xs">Qəbzlər</p>
-                                    <p className="text-xl font-bold">{receipts.length}</p>
+                                    <p className="text-xs text-white/80 mb-1">Qəbzlər</p>
+                                    <p className="text-xl font-semibold">{receipts.length}</p>
                                 </div>
                                 <div>
-                                    <p className="text-white/70 text-xs">Kateqoriya</p>
-                                    <p className="text-xl font-bold">{new Set(receipts.map(r => r.category)).size}</p>
+                                    <p className="text-xs text-white/80 mb-1">Kateqoriya</p>
+                                    <p className="text-xl font-semibold">
+                                        {new Set(receipts.map((r) => r.category)).size}
+                                    </p>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </section>
 
-                    {/* Content */}
-                    <div className="p-6">
-                        {activeTab === 'dashboard' && (
-                            <div className="space-y-4">
-                                <h3 className="text-xl font-bold text-slate-900 mb-4">Son Əməliyyatlar</h3>
+                    {/* Main content */}
+                    <main className="flex-1 px-4 sm:px-6 pt-6 space-y-6">
+                        {activeTab === "dashboard" && (
+                            <>
+                                {/* Upload card */}
+                                <section>
+                                    <div
+                                        className={`${isDark ? "glass-dark text-white" : "glass-light text-slate-900"
+                                            } rounded-3xl p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6`}
+                                    >
+                                        <div>
+                                            <p className="text-xs tracking-[0.25em] uppercase text-slate-400 mb-2">
+                                                MaliAI
+                                            </p>
+                                            <h2 className="text-lg font-bold mb-1">
+                                                Qəbzlərinizi yükləyin
+                                            </h2>
+                                            <p
+                                                className={`text-sm ${isDark ? "text-slate-300" : "text-slate-500"
+                                                    }`}
+                                            >
+                                                Sənədlərinizi skan edin, MaliAI qalan işi AI ilə həll
+                                                etsin.
+                                            </p>
 
-                                {receipts.length === 0 ? (
-                                    <div className="bg-white rounded-3xl p-8 text-center shadow-lg">
-                                        <div className="w-16 h-16 bg-slate-100 rounded-full mx-auto mb-4 flex items-center justify-center">
-                                            <span className="text-3xl">📸</span>
+                                            <div className="flex gap-4 mt-4 text-center text-xs">
+                                                <div>
+                                                    <p className="text-slate-400 mb-1">Sənəd</p>
+                                                    <p className="text-lg font-semibold">
+                                                        {receipts.length}
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-slate-400 mb-1">Vaxt</p>
+                                                    <p className="text-lg font-semibold">12h</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-slate-400 mb-1">Dəqiqlik</p>
+                                                    <p className="text-lg font-semibold">98%</p>
+                                                </div>
+                                            </div>
+
+                                            <button
+                                                onClick={() => fileInputRef.current?.click()}
+                                                className="mt-5 w-full sm:w-auto px-6 py-3 rounded-2xl gradient-bg-strong text-white font-semibold shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
+                                            >
+                                                <span>📷</span>
+                                                <span>Qəbzi skan et</span>
+                                            </button>
                                         </div>
-                                        <p className="text-slate-600 mb-4">Hələ qəbz yoxdur</p>
-                                        <button
-                                            onClick={() => fileInputRef.current?.click()}
-                                            className="px-6 py-3 gradient-bg text-white rounded-xl font-semibold shadow-lg active:scale-95 transition-all"
-                                        >
-                                            İlk Qəbzi Skan Et
-                                        </button>
                                     </div>
-                                ) : (
-                                    receipts.map(receipt => (
-                                        <div key={receipt.id} className="bg-white rounded-2xl p-4 shadow-md flex items-center gap-4">
-                                            <div
-                                                className="w-14 h-14 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                                                <span className="text-2xl">📄</span>
+                                </section>
+
+                                {/* Recent */}
+                                <section>
+                                    <h3
+                                        className={`text-base font-semibold mb-3 ${isDark ? "text-white" : "text-slate-900"
+                                            }`}
+                                    >
+                                        Son əməliyyatlar
+                                    </h3>
+
+                                    {receipts.length === 0 ? (
+                                        <div
+                                            className={`${isDark ? "glass-dark text-slate-300" : "glass-light text-slate-600"
+                                                } rounded-3xl p-8 text-center`}
+                                        >
+                                            <div className="w-16 h-16 rounded-full bg-slate-100 mx-auto mb-4 flex items-center justify-center">
+                                                <span className="text-3xl">📸</span>
                                             </div>
-                                            <div className="flex-1 min-w-0">
-                                                <h4 className="font-bold text-slate-900 truncate">{receipt.vendor}</h4>
-                                                <p className="text-sm text-slate-500">{receipt.category}</p>
-                                                <p className="text-xs text-slate-400">
-                                                    {new Date(receipt.date).toLocaleDateString('az-AZ', { day: 'numeric', month: 'short' })}
-                                                </p>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className="font-bold text-slate-900">{receipt.amount}₼</p>
-                                            </div>
+                                            <p className="mb-4">Hələ qəbz yoxdur</p>
+                                            <button
+                                                onClick={() => fileInputRef.current?.click()}
+                                                className="px-6 py-3 rounded-2xl gradient-bg-strong text-white font-semibold shadow-lg active:scale-95 transition-all"
+                                            >
+                                                İlk qəbzi skan et
+                                            </button>
                                         </div>
-                                    ))
-                                )}
-                            </div>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            {receipts.map((r) => (
+                                                <div
+                                                    key={r.id}
+                                                    className={`${isDark ? "bg-slate-900/80 text-white" : "bg-white text-slate-900"
+                                                        } rounded-2xl p-4 shadow flex items-center gap-3`}
+                                                >
+                                                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center flex-shrink-0">
+                                                        <span className="text-2xl">📄</span>
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="font-semibold truncate">
+                                                            {r.vendor}
+                                                        </p>
+                                                        <p
+                                                            className={`text-xs ${isDark ? "text-slate-300" : "text-slate-500"
+                                                                }`}
+                                                        >
+                                                            {r.category}
+                                                        </p>
+                                                        <p className="text-xs text-slate-400">
+                                                            {new Date(r.date).toLocaleDateString("az-AZ", {
+                                                                day: "numeric",
+                                                                month: "short",
+                                                            })}
+                                                        </p>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="font-semibold">{r.amount}₼</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </section>
+                            </>
                         )}
 
-                        {activeTab === 'chat' && (
-                            <div className="flex flex-col h-[calc(100vh-280px)]">
+                        {activeTab === "chat" && (
+                            <section className="flex flex-col h-[calc(100vh-220px)]">
                                 <div className="flex-1 overflow-y-auto space-y-4 mb-4">
-                                    <div className="chat-bubble-ai rounded-2xl p-4 max-w-[85%]">
+                                    {/* Intro AI bubble */}
+                                    <div
+                                        className={`${isDark ? "bg-slate-900/80 text-slate-50" : "bg-white text-slate-800"
+                                            } rounded-2xl p-4 shadow`}
+                                    >
                                         <div className="flex items-start gap-3">
-                                            <div
-                                                className="w-8 h-8 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                                                <span className="text-lg">🤖</span>
+                                            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center text-white flex-shrink-0">
+                                                🤖
                                             </div>
-                                            <div>
-                                                <p className="text-slate-700 text-sm leading-relaxed mb-2">
-                                                    Salam! Mən sizin AI maliyyə məsləhətçinizəm. Büdcə, xərclər və kredit haqqında suallarınızı
-                                                    verə bilərsiniz.
-                                                </p>
-                                            </div>
+                                            <p className="text-sm leading-relaxed">
+                                                Salam! Mən sizin AI maliyyə məsləhətçinizəm. Büdcə,
+                                                xərclər və kredit haqqında suallarınızı verə
+                                                bilərsiniz. Yüklədiyiniz qəbzlərə əsaslanaraq sizə
+                                                daha dəqiq tövsiyələr verəcəyəm.
+                                            </p>
                                         </div>
                                     </div>
 
                                     {chatMessages.map((msg, idx) => (
-                                        <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                        <div
+                                            key={idx}
+                                            className={`flex ${msg.role === "user"
+                                                ? "justify-end"
+                                                : "justify-start"
+                                                }`}
+                                        >
                                             <div
-                                                className={`max-w-[85%] p-4 rounded-2xl ${msg.role === 'user'
-                                                    ? 'chat-bubble-user text-white'
-                                                    : 'chat-bubble-ai text-slate-700'
-                                                    }`}>
-                                                <p className="text-sm leading-relaxed">{msg.content}</p>
+                                                className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow ${msg.role === "user"
+                                                    ? "bg-gradient-to-br from-indigo-500 to-purple-500 text-white"
+                                                    : isDark
+                                                        ? "bg-slate-900/85 text-slate-50"
+                                                        : "bg-white text-slate-800"
+                                                    }`}
+                                            >
+                                                {msg.content}
                                             </div>
                                         </div>
                                     ))}
                                     <div ref={chatEndRef} />
                                 </div>
 
-                                <div className="flex gap-2 bg-white rounded-2xl p-2 shadow-lg">
+                                <div
+                                    className={`${isDark ? "bg-slate-900/90" : "bg-white"
+                                        } rounded-2xl p-2 shadow flex items-center gap-2`}
+                                >
                                     <input
                                         value={chatInput}
                                         onChange={(e) => setChatInput(e.target.value)}
-                                        onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                                        onKeyDown={(e) => e.key === "Enter" && sendMessage()}
                                         placeholder="Sualınızı yazın..."
-                                        className="flex-1 px-4 py-3 bg-transparent focus:outline-none text-slate-800 placeholder:text-slate-400"
+                                        className="flex-1 px-3 py-2 bg-transparent focus:outline-none text-sm"
                                     />
                                     <button
                                         onClick={sendMessage}
-                                        className="w-12 h-12 gradient-bg rounded-xl flex items-center justify-center text-white active:scale-95 transition-all"
+                                        className="w-10 h-10 rounded-xl gradient-bg-strong text-white flex items-center justify-center active:scale-95 transition-all"
                                     >
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                                d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                                        </svg>
+                                        ➤
                                     </button>
                                 </div>
-                            </div>
+                            </section>
                         )}
-                    </div>
+                    </main>
 
-                    {/* Bottom Navigation */}
-                    <div
-                        className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-6 py-4 flex justify-around items-center shadow-2xl">
+                    {/* Bottom nav */}
+                    <nav
+                        className={`${isDark ? "bg-slate-950" : "bg-white"
+                            } fixed bottom-0 left-0 right-0 border-t border-slate-200/60 px-6 py-3 flex items-center justify-around`}
+                    >
                         <button
-                            onClick={() => setActiveTab('dashboard')}
-                            className={`flex flex-col items-center gap-1 ${activeTab === 'dashboard' ? 'text-purple-600' : 'text-slate-400'}`}
+                            onClick={() => setActiveTab("dashboard")}
+                            className={`flex flex-col items-center gap-0.5 text-xs ${activeTab === "dashboard"
+                                ? "text-purple-600"
+                                : "text-slate-400"
+                                }`}
                         >
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                    d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                            </svg>
-                            <span className="text-xs font-medium">Ana Səhifə</span>
+                            <span>🏠</span>
+                            <span>Ana səhifə</span>
                         </button>
 
                         <button
                             onClick={() => fileInputRef.current?.click()}
-                            className="w-16 h-16 -mt-8 gradient-bg rounded-full flex items-center justify-center text-white shadow-2xl active:scale-95 transition-all"
+                            className="w-14 h-14 -mt-8 rounded-full gradient-bg-strong text-white flex items-center justify-center shadow-2xl active:scale-95 transition-all"
                         >
-                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                    d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
+                            📷
                         </button>
 
                         <button
-                            onClick={() => setActiveTab('chat')}
-                            className={`flex flex-col items-center gap-1 ${activeTab === 'chat' ? 'text-purple-600' : 'text-slate-400'}`}
+                            onClick={() => setActiveTab("chat")}
+                            className={`flex flex-col items-center gap-0.5 text-xs ${activeTab === "chat"
+                                ? "text-purple-600"
+                                : "text-slate-400"
+                                }`}
                         >
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                            </svg>
-                            <span className="text-xs font-medium">AI Chat</span>
+                            <span>💬</span>
+                            <span>AI Chat</span>
                         </button>
-                    </div>
+                    </nav>
 
                     <input
                         ref={fileInputRef}
@@ -774,80 +1176,11 @@
                         onChange={handleFileUpload}
                         className="hidden"
                     />
-
-                    {/* API Key Modal */}
-                    {showApiKeyModal && (
-                        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-6 z-50">
-                            <div className="bg-white rounded-3xl p-6 max-w-md w-full scale-in shadow-2xl">
-                                <div className="flex justify-between items-center mb-4">
-                                    <h3 className="text-xl font-bold text-slate-900">OpenAI API Key</h3>
-                                    <button
-                                        onClick={() => setShowApiKeyModal(false)}
-                                        className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center hover:bg-slate-200 transition-colors"
-                                    >
-                                        <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
-                                    </button>
-                                </div>
-
-                                <p className="text-sm text-slate-600 mb-4">
-                                    AI ilə daha ağıllı söhbət üçün OpenAI API açarınızı daxil edin. Açar yalnız sizin brauzerinizdə
-                                    saxlanılır.
-                                </p>
-
-                                <div className="mb-4">
-                                    <label className="block text-sm font-semibold text-slate-700 mb-2">
-                                        API Key
-                                    </label>
-                                    <input
-                                        type="password"
-                                        value={apiKeyInput}
-                                        onChange={(e) => setApiKeyInput(e.target.value)}
-                                        placeholder="sk-..."
-                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition-all text-sm font-mono"
-                                    />
-                                    <p className="text-xs text-slate-500 mt-2">
-                                        Açar əldə etmək üçün: <a href="https://platform.openai.com/api-keys" target="_blank"
-                                            className="text-purple-600 hover:underline">platform.openai.com</a>
-                                    </p>
-                                </div>
-
-                                <div className="flex gap-3">
-                                    <button
-                                        onClick={saveApiKey}
-                                        disabled={!apiKeyInput.trim()}
-                                        className="flex-1 py-3 rounded-xl gradient-bg text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-all"
-                                    >
-                                        Saxla
-                                    </button>
-                                    {hasApiKey() && (
-                                        <button
-                                            onClick={removeApiKey}
-                                            className="px-4 py-3 rounded-xl bg-red-50 text-red-600 font-semibold hover:bg-red-100 active:scale-95 transition-all"
-                                        >
-                                            Sil
-                                        </button>
-                                    )}
-                                </div>
-
-                                {hasApiKey() && (
-                                    <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-xl flex items-center gap-2">
-                                        <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                        <span className="text-sm font-medium text-green-800">API açarı aktiv</span>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
                 </div>
             );
         };
 
-        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+        ReactDOM.createRoot(document.getElementById("root")).render(<App />);
     </script>
 </body>
 
